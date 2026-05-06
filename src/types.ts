@@ -17,6 +17,7 @@ export interface SiteReport {
   pageScreenshot: string;
   adsFound: number;
   ads: AdCapture[];
+  adNetworkRequests: string[];
   duration_ms: number;
 }
 

@@ -104,28 +104,71 @@ export async function captureSite(
 
   let adsFound: AdCapture[] = [];
   const pageScreenshot = path.join(outputDir, `${siteName}_page.png`);
+  const adRequests: string[] = [];
+
+  const AD_NETWORKS = [
+    "doubleclick", "googlesyndication", "adnxs", "smartadserver",
+    "pubmatic", "openx", "rubiconproject", "advertising.com",
+    "criteo", "teads", "taboola", "outbrain", "sharethrough",
+    "amazon-adsystem", "adsrvr", "casalemedia", "sovrn",
+  ];
+
+  // intercept ad network requests
+  page.on("request", (req) => {
+    const reqUrl = req.url();
+    if (AD_NETWORKS.some((net) => reqUrl.includes(net))) {
+      adRequests.push(reqUrl);
+    }
+  });
 
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-    // scroll to trigger lazy-loaded ads
-    await page.evaluate(() => window.scrollTo(0, 600));
-    await page.waitForTimeout(2000);
-    await page.evaluate(() => window.scrollTo(0, 1200));
+    // attendre que le cookie banner apparaisse
     await page.waitForTimeout(3000);
 
-    // accept cookie banners if present
-    for (const btnText of ["Accepter", "Accept", "J'accepte", "Tout accepter", "OK"]) {
+    // cliquer le cookie banner — plusieurs tentatives
+    const cookieSelectors = [
+      "button#didomi-notice-agree-button",
+      "button.didomi-continue-without-agreeing",
+      "[id*='accept'][class*='button']",
+      "button[title*='Accepter']",
+    ];
+    for (const sel of cookieSelectors) {
+      const el = page.locator(sel);
+      if (await el.count() > 0) {
+        await el.first().click().catch(() => null);
+        await page.waitForTimeout(2500);
+        break;
+      }
+    }
+    for (const btnText of ["Accepter et fermer", "Tout accepter", "Accepter", "Accept all", "J'accepte"]) {
       const btn = page.getByRole("button", { name: btnText, exact: false });
       if (await btn.count() > 0) {
         await btn.first().click().catch(() => null);
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(2500);
         break;
       }
     }
 
+    // attendre que les vraies pubs se chargent après cookie
+    await page.waitForTimeout(4000);
+
+    // scroll pour déclencher les pubs lazy-loaded
+    await page.evaluate(() => window.scrollTo(0, 800));
+    await page.waitForTimeout(2000);
+    await page.evaluate(() => window.scrollTo(0, 1600));
+    await page.waitForTimeout(2000);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(1000);
+
     await page.screenshot({ path: pageScreenshot, fullPage: false });
     adsFound = await captureAds(page, outputDir, siteName);
+
+    // si DOM ne trouve rien mais réseau a détecté des pubs
+    if (adsFound.length === 0 && adRequests.length > 0) {
+      console.log(`  [réseau] ${adRequests.length} requête(s) pub interceptée(s) sur ${siteName}`);
+    }
   } catch (err) {
     console.error(`  Error on ${siteName}:`, (err as Error).message);
   } finally {
@@ -139,6 +182,7 @@ export async function captureSite(
     pageScreenshot,
     adsFound: adsFound.length,
     ads: adsFound,
+    adNetworkRequests: [...new Set(adRequests)].slice(0, 20),
     duration_ms: Date.now() - start,
   };
 }

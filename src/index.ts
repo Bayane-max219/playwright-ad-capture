@@ -1,13 +1,14 @@
 import * as path from "path";
 import { captureSite } from "./capture";
 import { generateReport } from "./report";
+import { generateHtmlReport } from "./htmlReport";
 
 const CAMPAIGN = "Test Campaign — Sites Français";
 
 const SITES = [
-  { name: "lemonde", url: "https://www.lemonde.fr" },
-  { name: "lefigaro", url: "https://www.lefigaro.fr" },
-  { name: "lequipe", url: "https://www.lequipe.fr" },
+  { name: "20minutes", url: "https://www.20minutes.fr" },
+  { name: "bfmtv", url: "https://www.bfmtv.com" },
+  { name: "marmiton", url: "https://www.marmiton.org" },
 ];
 
 async function main() {
@@ -29,6 +30,9 @@ async function main() {
 
   const reportPath = generateReport(CAMPAIGN, results, outputDir);
   console.log(`Rapport JSON sauvegardé : ${reportPath}`);
+
+  const htmlPath = generateHtmlReport({ campaign: CAMPAIGN, generatedAt: new Date().toISOString(), totalSites: results.length, totalAdsFound: results.reduce((s, r) => s + r.adsFound, 0), sites: results }, outputDir);
+  console.log(`Rapport HTML sauvegardé : ${htmlPath}`);
 }
 
 main().catch(console.error);
