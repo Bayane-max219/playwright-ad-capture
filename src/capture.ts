@@ -64,7 +64,7 @@ async function captureAds(page: Page, outputDir: string, siteName: string): Prom
         const screenshotName = `${siteName}_ad_${ads.length + 1}.png`;
         const screenshotPath = path.join(outputDir, screenshotName);
 
-        await elements[i].screenshot({ path: screenshotPath }).catch(() => null);
+        await page.screenshot({ path: screenshotPath, clip: { x: box.x, y: box.y, width: box.width, height: box.height } }).catch(() => null);
 
         ads.push({
           src: src.slice(0, 120),
