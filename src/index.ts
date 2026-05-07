@@ -2,6 +2,7 @@ import * as path from "path";
 import { captureSite } from "./capture";
 import { generateReport } from "./report";
 import { generateHtmlReport } from "./htmlReport";
+import { generatePptReport } from "./pptReport";
 
 const CAMPAIGN = "Test Campaign — Sites Français";
 
@@ -31,8 +32,13 @@ async function main() {
   const reportPath = generateReport(CAMPAIGN, results, outputDir);
   console.log(`Rapport JSON sauvegardé : ${reportPath}`);
 
-  const htmlPath = generateHtmlReport({ campaign: CAMPAIGN, generatedAt: new Date().toISOString(), totalSites: results.length, totalAdsFound: results.reduce((s, r) => s + r.adsFound, 0), sites: results }, outputDir);
+  const campaignData = { campaign: CAMPAIGN, generatedAt: new Date().toISOString(), totalSites: results.length, totalAdsFound: results.reduce((s, r) => s + r.adsFound, 0), sites: results };
+
+  const htmlPath = generateHtmlReport(campaignData, outputDir);
   console.log(`Rapport HTML sauvegardé : ${htmlPath}`);
+
+  const pptPath = await generatePptReport(campaignData, outputDir);
+  console.log(`Rapport PPT sauvegardé  : ${pptPath}`);
 }
 
 main().catch(console.error);
